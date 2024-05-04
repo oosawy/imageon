@@ -2,10 +2,9 @@ package main
 
 import (
 	"image"
-	"image/jpeg"
 	"os"
 
-	"golang.org/x/image/draw"
+	"github.com/disintegration/imaging"
 )
 
 func LoadImage(path string) (image.Image, error) {
@@ -15,7 +14,7 @@ func LoadImage(path string) (image.Image, error) {
 	}
 	defer f.Close()
 
-	img, _, err := image.Decode(f)
+	img, err := imaging.Decode(f, imaging.AutoOrientation(true))
 	if err != nil {
 		return nil, err
 	}
@@ -30,7 +29,7 @@ func SaveImage(path string, img image.Image) error {
 	}
 	defer f.Close()
 
-	err = jpeg.Encode(f, img, nil)
+	err = imaging.Encode(f, img, imaging.JPEG, imaging.JPEGQuality(75))
 	if err != nil {
 		return err
 	}
@@ -39,25 +38,31 @@ func SaveImage(path string, img image.Image) error {
 }
 
 func ResizeImage(img image.Image, width, height int) image.Image {
-	// do not resize if the image is smaller than the target size
-	bounds := img.Bounds()
-	if bounds.Dx() < width && bounds.Dy() < height {
-		return img
-	}
-
-	// calculate the new size
-	var w, h int
-	if bounds.Dx() > bounds.Dy() {
-		w = width
-		h = bounds.Dy() * width / bounds.Dx()
-	} else {
-		w = bounds.Dx() * height / bounds.Dy()
-		h = height
-	}
-
-	// resize the image
-	dst := image.NewRGBA(image.Rect(0, 0, w, h))
-	draw.BiLinear.Scale(dst, dst.Bounds(), img, bounds, draw.Over, nil)
+	dst := resizeAndCrop(img, width, height, imaging.Center, imaging.Lanczos)
 
 	return dst
+}
+
+// copied form https://github.com/disintegration/imaging/blob/d40f48ce0f098c53ab1fcd6e0e402da682262da5/resize.go#L315-L335
+// Copyright (c) 2012 Grigory Dryapak
+// resizeAndCrop resizes the image to the smallest possible size that will cover the specified dimensions,
+// crops the resized image to the specified dimensions using the given anchor point and returns
+// the transformed image.
+func resizeAndCrop(img image.Image, width, height int, anchor imaging.Anchor, filter imaging.ResampleFilter) *image.NRGBA {
+	dstW, dstH := width, height
+
+	srcBounds := img.Bounds()
+	srcW := srcBounds.Dx()
+	srcH := srcBounds.Dy()
+	srcAspectRatio := float64(srcW) / float64(srcH)
+	dstAspectRatio := float64(dstW) / float64(dstH)
+
+	var tmp *image.NRGBA
+	if srcAspectRatio < dstAspectRatio {
+		tmp = imaging.Resize(img, dstW, 0, filter)
+	} else {
+		tmp = imaging.Resize(img, 0, dstH, filter)
+	}
+
+	return imaging.CropAnchor(tmp, dstW, dstH, anchor)
 }
