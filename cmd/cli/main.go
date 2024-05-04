@@ -4,6 +4,8 @@ import (
 	"io"
 	"os"
 	"strconv"
+
+	"github.com/oosawy/imageon"
 )
 
 func main() {
@@ -28,7 +30,7 @@ func main() {
 	}
 	defer f.Close()
 
-	img, err := ResizeImage(f, width, height)
+	img, err := imageon.ResizeImage(f, width, height)
 	if err != nil {
 		panic(err)
 	}

@@ -1,16 +1,11 @@
 package main
 
 import (
-	"context"
+	"github.com/oosawy/imageon"
 
 	"github.com/aws/aws-lambda-go/lambda"
 )
 
-func HandleRequest(ctx context.Context) (*string, error) {
-	message := "Hello World!"
-	return &message, nil
-}
-
 func main() {
-	lambda.Start(HandleRequest)
+	lambda.Start(imageon.HandleRequest)
 }
