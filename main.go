@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io"
 	"os"
 	"strconv"
 )
@@ -21,14 +22,24 @@ func main() {
 		panic(err)
 	}
 
-	img, err := LoadImage(inputPath)
+	f, err := os.Open(inputPath)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
+
+	img, err := ResizeImage(f, width, height)
 	if err != nil {
 		panic(err)
 	}
 
-	img = ResizeImage(img, width, height)
+	f, err = os.Create(outputPath)
+	if err != nil {
+		panic(err)
+	}
+	defer f.Close()
 
-	err = SaveImage(outputPath, img)
+	_, err = io.Copy(f, img)
 	if err != nil {
 		panic(err)
 	}

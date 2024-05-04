@@ -1,43 +1,34 @@
 package main
 
 import (
+	"bytes"
+	"errors"
 	"image"
-	"os"
+	"io"
 
 	"github.com/disintegration/imaging"
 )
 
-func LoadImage(path string) (image.Image, error) {
-	f, err := os.Open(path)
+func ResizeImage(r io.Reader, width, height int) (io.Reader, error) {
+	img, err := imaging.Decode(r, imaging.AutoOrientation(true))
 	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	img, err := imaging.Decode(f, imaging.AutoOrientation(true))
-	if err != nil {
-		return nil, err
+		return nil, errors.Join(errors.New("Failed to decode image"), err)
 	}
 
-	return img, nil
+	img = processImage(img, width, height)
+
+	w := new(bytes.Buffer)
+
+	err = imaging.Encode(w, img, imaging.JPEG, imaging.JPEGQuality(75))
+	if err != nil {
+		return nil, errors.Join(errors.New("Failed to encode image"), err)
+	}
+
+	return w, nil
+
 }
 
-func SaveImage(path string, img image.Image) error {
-	f, err := os.Create(path)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	err = imaging.Encode(f, img, imaging.JPEG, imaging.JPEGQuality(75))
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func ResizeImage(img image.Image, width, height int) image.Image {
+func processImage(img image.Image, width, height int) image.Image {
 	dst := resizeAndCrop(img, width, height, imaging.Center, imaging.Lanczos)
 
 	return dst
