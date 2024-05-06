@@ -10,8 +10,9 @@ import (
 
 func handleRequest(ctx context.Context, request events.LambdaFunctionURLRequest) (events.APIGatewayProxyResponse, error) {
 	res, err := imageon.HandleRequest(ctx, imageon.RawRequest{
-		Path: request.RawPath,
-		Body: request.Body,
+		Method: request.RequestContext.HTTP.Method,
+		Path:   request.RawPath,
+		Body:   request.Body,
 	})
 
 	if err != nil {

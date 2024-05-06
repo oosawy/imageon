@@ -19,8 +19,9 @@ func main() {
 		}
 
 		res, err := imageon.HandleRequest(r.Context(), imageon.RawRequest{
-			Path: r.URL.Path,
-			Body: string(body),
+			Method: r.Method,
+			Path:   r.URL.Path,
+			Body:   string(body),
 		})
 		if err != nil {
 			message := errors.Join(errors.New("internal server error"), err).Error()

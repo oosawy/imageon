@@ -2,7 +2,9 @@ package main
 
 import (
 	"github.com/aws/aws-cdk-go/awscdk/v2"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awsiam"
 	"github.com/aws/aws-cdk-go/awscdk/v2/awslambda"
+	"github.com/aws/aws-cdk-go/awscdk/v2/awss3"
 
 	// "github.com/aws/aws-cdk-go/awscdk/v2/awssqs"
 	awscdklambdago "github.com/aws/aws-cdk-go/awscdklambdagoalpha/v2"
@@ -21,15 +23,35 @@ func NewCdkStack(scope constructs.Construct, id string, props *CdkStackProps) aw
 	}
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
-	// The code that defines your stack goes here
+	unprocessedBucket := awss3.NewBucket(stack, jsii.String("unprocessed-images-bucket"), &awss3.BucketProps{
+		LifecycleRules: &[]*awss3.LifecycleRule{
+			{
+				Expiration: awscdk.Duration(awscdk.Duration_Days(jsii.Number(30))),
+			},
+		},
+	})
 
-	// example resource
-	// queue := awssqs.NewQueue(stack, jsii.String("CdkQueue"), &awssqs.QueueProps{
-	// 	VisibilityTimeout: awscdk.Duration_Seconds(jsii.Number(300)),
-	// })
+	processedBucket := awss3.NewBucket(stack, jsii.String("processed-images-bucket"), &awss3.BucketProps{})
+	publicBucketPolicy := awsiam.NewPolicyStatement(&awsiam.PolicyStatementProps{
+		Effect: awsiam.Effect_ALLOW,
+		Actions: &[]*string{
+			jsii.String("s3:GetObject"),
+		},
+		Principals: &[]awsiam.IPrincipal{
+			awsiam.NewAnyPrincipal(),
+		},
+		Resources: &[]*string{
+			jsii.String(*unprocessedBucket.BucketArn() + "/*"),
+		},
+	})
+	processedBucket.AddToResourcePolicy(publicBucketPolicy)
 
 	lambda := awscdklambdago.NewGoFunction(stack, jsii.String("handler"), &awscdklambdago.GoFunctionProps{
 		Entry: jsii.String("../lambda"),
+		Environment: &map[string]*string{
+			"UNPROCESSED_BUCKET": unprocessedBucket.BucketArn(),
+			"PROCESSED_BUCKET":   processedBucket.BucketArn(),
+		},
 	})
 
 	allowedOrigin := "*"
